@@ -4,10 +4,20 @@ import { AuthProvider, ProtectedRoute, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import DocPage from './pages/DocPage';
+import AdminDashboard from './pages/AdminDashboard';
 
 const PublicOnlyRoute = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  if (isAuthenticated) {
+  const { user } = useAuth();
+  if (user) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  return children;
+};
+
+const AdminRoute = ({ children }) => {
+  const { userData, loading } = useAuth();
+  if (loading) return null;
+  if (userData?.role !== 'admin') {
     return <Navigate to="/dashboard" replace />;
   }
   return children;
@@ -26,6 +36,13 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/admin" element={
+            <ProtectedRoute>
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
             </ProtectedRoute>
           } />
           <Route path="/day1" element={

@@ -1,18 +1,183 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import ThemeToggle from '../components/ThemeToggle';
 import WorkplaceUsageCard from '../components/WorkplaceUsageCard';
 import { day1Content, day2Content } from '../data/content.jsx';
-import { ArrowLeft } from 'lucide-react';
+import { quizzes } from '../data/quizzes';
+import { ArrowLeft, CheckCircle2, Lock, ArrowRight, Star } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { db } from '../firebase';
+import { doc, updateDoc, arrayUnion } from 'firebase/firestore';
+import confetti from 'canvas-confetti';
+
+const QuizComponent = ({ sectionId, onComplete }) => {
+    const questions = quizzes[sectionId] || [];
+    const [currentQuestion, setCurrentQuestion] = useState(0);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [showResult, setShowResult] = useState(false);
+    const [isCorrect, setIsCorrect] = useState(null);
+    const [score, setScore] = useState(0);
+
+    if (questions.length === 0) return null;
+
+    const handleAnswer = () => {
+        const correct = selectedOption === questions[currentQuestion].answer;
+        setIsCorrect(correct);
+        if (correct) setScore(s => s + 1);
+        setShowResult(true);
+
+        setTimeout(() => {
+            if (currentQuestion < questions.length - 1) {
+                setCurrentQuestion(q => q + 1);
+                setSelectedOption(null);
+                setShowResult(false);
+                setIsCorrect(null);
+            } else {
+                const finalScore = score + (correct ? 1 : 0);
+                if (finalScore === questions.length) {
+                    onComplete();
+                } else {
+                    // Reset quiz if failed
+                    alert(`You got ${finalScore}/${questions.length}. Please re-read and try again!`);
+                    setCurrentQuestion(0);
+                    setSelectedOption(null);
+                    setShowResult(false);
+                    setIsCorrect(null);
+                    setScore(0);
+                }
+            }
+        }, 1500);
+    };
+
+    return (
+        <div style={{
+            marginTop: '3rem',
+            padding: '2.5rem',
+            background: 'var(--bg-secondary)',
+            borderRadius: '24px',
+            border: '1px solid var(--border-color)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{
+                    padding: '8px 16px',
+                    background: 'var(--accent-color)',
+                    color: '#fff',
+                    borderRadius: '12px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600
+                }}>
+                    QUIZ: QUESTION {currentQuestion + 1} / {questions.length}
+                </div>
+            </div>
+
+            <h3 style={{ fontSize: '1.4rem', marginBottom: '2rem', lineHeight: '1.4' }}>
+                {questions[currentQuestion].question}
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {questions[currentQuestion].options.map((option, idx) => (
+                    <button
+                        key={idx}
+                        onClick={() => !showResult && setSelectedOption(idx)}
+                        style={{
+                            padding: '1.2rem',
+                            textAlign: 'left',
+                            borderRadius: '14px',
+                            border: '1px solid',
+                            borderColor: selectedOption === idx ? 'var(--accent-color)' : 'var(--border-color)',
+                            background: selectedOption === idx ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
+                            color: 'var(--text-primary)',
+                            cursor: showResult ? 'default' : 'pointer',
+                            transition: 'all 0.2s ease',
+                            fontSize: '1rem',
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        {option}
+                        {showResult && idx === questions[currentQuestion].answer && (
+                            <CheckCircle2 size={18} style={{ float: 'right', color: '#10b981' }} />
+                        )}
+                        {showResult && selectedOption === idx && idx !== questions[currentQuestion].answer && (
+                            <span style={{ float: 'right', color: '#ef4444' }}>✕</span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
+            <button
+                onClick={handleAnswer}
+                disabled={selectedOption === null || showResult}
+                style={{
+                    marginTop: '2rem',
+                    width: '100%',
+                    padding: '1rem',
+                    borderRadius: '12px',
+                    background: selectedOption === null ? 'var(--border-color)' : 'var(--text-primary)',
+                    color: 'var(--bg-primary)',
+                    border: 'none',
+                    fontWeight: 600,
+                    cursor: selectedOption === null ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s'
+                }}
+            >
+                {showResult ? (isCorrect ? 'Correct!' : 'Incorrect') : 'Submit Answer'}
+            </button>
+        </div>
+    );
+};
 
 export default function DocPage({ day }) {
     const navigate = useNavigate();
+    const { user, userData, setUserData } = useAuth();
     const content = day === 'day1' ? day1Content : day2Content;
     const [activeId, setActiveId] = useState(content[0]?.id);
+    const [showWow, setShowWow] = useState(false);
 
-    // Scroll Spy Logic
+    // Get completed sections from userData
+    const completedSections = userData?.progress?.completedSections || [];
+
+    const isLocked = (index) => {
+        if (index === 0) return false;
+        return !completedSections.includes(content[index - 1].id);
+    };
+
+    const handleSectionComplete = async (sectionId) => {
+        if (completedSections.includes(sectionId)) return;
+
+        try {
+            const userRef = doc(db, 'users', user.uid);
+            await updateDoc(userRef, {
+                'progress.completedSections': arrayUnion(sectionId)
+            });
+
+            setUserData(prev => ({
+                ...prev,
+                progress: {
+                    ...prev.progress,
+                    completedSections: [...prev.progress.completedSections, sectionId]
+                }
+            }));
+
+            // Success effects
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#6366f1', '#a855f7', '#ec4899']
+            });
+
+            setShowWow(true);
+            setTimeout(() => setShowWow(false), 4000);
+
+        } catch (err) {
+            console.error("Error updating progress:", err);
+        }
+    };
+
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -34,8 +199,40 @@ export default function DocPage({ day }) {
     }, [content]);
 
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
-            {/* Top Bar */}
+        <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+            <AnimatePresence>
+                {showWow && (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.5, y: 50 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.5, y: -50 }}
+                        style={{
+                            position: 'fixed',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            zIndex: 1000,
+                            background: 'rgba(255, 255, 255, 0.1)',
+                            backdropFilter: 'blur(20px)',
+                            padding: '3rem 5rem',
+                            borderRadius: '32px',
+                            border: '1px solid rgba(255,255,255,0.2)',
+                            textAlign: 'center',
+                            boxShadow: '0 50px 100px rgba(0,0,0,0.5)'
+                        }}
+                    >
+                        <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                            {[1, 2, 3].map(i => <Star key={i} fill="#fbbf24" color="#fbbf24" size={32} />)}
+                        </div>
+                        <h2 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1rem', background: 'linear-gradient(to right, #6366f1, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                            WOW!
+                        </h2>
+                        <p style={{ fontSize: '1.25rem', opacity: 0.9 }}>You've done great! Section completed.</p>
+                        <p style={{ marginTop: '0.5rem', fontSize: '1rem', opacity: 0.6 }}>The next chapter awaits...</p>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <header style={{
                 height: '60px',
                 borderBottom: '1px solid var(--border-color)',
@@ -56,6 +253,7 @@ export default function DocPage({ day }) {
                     >
                         <ArrowLeft size={20} />
                     </button>
+                    <img src="/logo.png" alt="Logo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
                     <span style={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
                         GEN AI / {day === 'day1' ? 'Day 1' : 'Day 2'}
                     </span>
@@ -63,41 +261,115 @@ export default function DocPage({ day }) {
                 <ThemeToggle />
             </header>
 
-            {/* Main Layout */}
             <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto' }}>
-                <Sidebar topics={content} activeId={activeId} />
+                <Sidebar topics={content} activeId={activeId} completedSections={completedSections} />
 
                 <main style={{ flex: 1, padding: '4rem 6rem', maxWidth: '800px' }}>
-                    {content.map((section, index) => (
-                        <section
-                            key={section.id}
-                            id={section.id}
-                            style={{ marginBottom: '6rem' }}
-                        >
-                            <motion.div
-                                initial={{ opacity: 0, y: 20 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 0.5, delay: index * 0.1 }}
+                    {content.map((section, index) => {
+                        const locked = isLocked(index);
+                        const isDone = completedSections.includes(section.id);
+
+                        return (
+                            <section
+                                key={section.id}
+                                id={section.id}
+                                style={{
+                                    marginBottom: '8rem',
+                                    opacity: locked ? 0.4 : 1,
+                                    filter: locked ? 'grayscale(0.8)' : 'none',
+                                    pointerEvents: locked ? 'none' : 'auto',
+                                    transition: 'all 0.5s ease',
+                                    position: 'relative'
+                                }}
                             >
-                                <h2 style={{
-                                    fontSize: '2rem',
-                                    marginBottom: '1.5rem',
-                                    paddingBottom: '0.5rem',
-                                    borderBottom: '1px solid var(--border-color)'
-                                }}>
-                                    {section.title}
-                                </h2>
+                                {locked && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        zIndex: 10,
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '1rem',
+                                        background: 'rgba(var(--bg-rgb), 0.5)'
+                                    }}>
+                                        <Lock size={40} />
+                                        <p style={{ fontWeight: 600 }}>Complete previous section to unlock</p>
+                                    </div>
+                                )}
 
-                                <div className="doc-content">
-                                    {section.content}
-                                </div>
-                            </motion.div>
-                        </section>
-                    ))}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true }}
+                                    transition={{ duration: 0.5 }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                                        <h2 style={{
+                                            fontSize: '2.5rem',
+                                            fontWeight: 700,
+                                            letterSpacing: '-0.03em'
+                                        }}>
+                                            {section.title}
+                                        </h2>
+                                        {isDone && <CheckCircle2 color="#10b981" size={32} />}
+                                    </div>
 
-                    <footer style={{ marginTop: '8rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-                        &copy; 2025 Gen AI Workshop. All rights reserved.
+                                    <div className="doc-content" style={{ fontSize: '1.1rem', lineHeight: '1.7', color: 'var(--text-secondary)' }}>
+                                        {section.content}
+                                    </div>
+
+                                    {!isDone && !locked && (
+                                        <QuizComponent
+                                            sectionId={section.id}
+                                            onComplete={() => handleSectionComplete(section.id)}
+                                        />
+                                    )}
+
+                                    {isDone && (
+                                        <div style={{
+                                            marginTop: '3rem',
+                                            padding: '1.5rem',
+                                            borderRadius: '16px',
+                                            background: 'rgba(16, 185, 129, 0.1)',
+                                            border: '1px solid rgba(16, 185, 129, 0.2)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#10b981' }}>
+                                                <CheckCircle2 size={24} />
+                                                <span style={{ fontWeight: 600 }}>Section Completed!</span>
+                                            </div>
+                                            {index < content.length - 1 && !completedSections.includes(content[index + 1].id) && (
+                                                <button
+                                                    onClick={() => document.getElementById(content[index + 1].id)?.scrollIntoView({ behavior: 'smooth' })}
+                                                    style={{
+                                                        background: 'var(--text-primary)',
+                                                        color: 'var(--bg-primary)',
+                                                        border: 'none',
+                                                        padding: '0.75rem 1.5rem',
+                                                        borderRadius: '10px',
+                                                        fontWeight: 600,
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '8px'
+                                                    }}
+                                                >
+                                                    Continue to Next <ArrowRight size={18} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </motion.div>
+                            </section>
+                        );
+                    })}
+
+                    <footer style={{ marginTop: '8rem', color: 'var(--text-secondary)', fontSize: '0.9rem', textAlign: 'center' }}>
+                        &copy; 2025 Gen AI Workshop. Built with Precision.
                     </footer>
                 </main>
 

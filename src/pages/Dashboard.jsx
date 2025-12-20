@@ -8,7 +8,7 @@ import LogoTicker from '../components/LogoTicker';
 
 export default function Dashboard() {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, userData } = useAuth();
 
     const handleLogout = () => {
         logout();
@@ -74,11 +74,31 @@ export default function Dashboard() {
                 position: 'relative',
                 zIndex: 10
             }}>
-                <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
+                    <img src="/logo.png" alt="Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
                     AI WORKSHOP
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <ThemeToggle />
+                    {userData?.role === 'admin' && (
+                        <button
+                            onClick={() => navigate('/admin')}
+                            style={{
+                                background: 'var(--accent-color)',
+                                color: '#fff',
+                                border: 'none',
+                                padding: '0.5rem 1rem',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem'
+                            }}
+                        >
+                            <Terminal size={16} /> Admin
+                        </button>
+                    )}
                     <button
                         onClick={handleLogout}
                         style={{

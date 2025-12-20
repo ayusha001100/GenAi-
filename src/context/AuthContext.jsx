@@ -1,27 +1,84 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { auth, db } from '../firebase';
+import {
+    onAuthStateChanged,
+    signInWithEmailAndPassword,
+    createUserWithEmailAndPassword,
+    signOut,
+    signInWithPopup,
+    GoogleAuthProvider
+} from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useNavigate, useLocation, Navigate } from 'react-router-dom';
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-    const [isAuthenticated, setIsAuthenticated] = useState(() => {
-        // Check localStorage on initial load
-        return localStorage.getItem('auth_token') === 'iamsmart_token';
-    });
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [userData, setUserData] = useState(null);
 
-    const login = () => {
-        localStorage.setItem('auth_token', 'iamsmart_token');
-        setIsAuthenticated(true);
+    const googleProvider = new GoogleAuthProvider();
+
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            setUser(currentUser);
+            if (currentUser) {
+                // Fetch additional user data from Firestore (progress, etc.)
+                const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+                if (userDoc.exists()) {
+                    setUserData(userDoc.data());
+                } else {
+                    // Initialize user doc if it doesn't exist
+                    const initialData = {
+                        email: currentUser.email,
+                        progress: {
+                            completedSections: []
+                        },
+                        role: 'user'
+                    };
+                    await setDoc(doc(db, 'users', currentUser.uid), initialData);
+                    setUserData(initialData);
+                }
+            } else {
+                setUserData(null);
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    const login = (email, password) => {
+        return signInWithEmailAndPassword(auth, email, password);
+    };
+
+    const signup = (email, password) => {
+        return createUserWithEmailAndPassword(auth, email, password);
+    };
+
+    const loginWithGoogle = () => {
+        return signInWithPopup(auth, googleProvider);
     };
 
     const logout = () => {
-        localStorage.removeItem('auth_token');
-        setIsAuthenticated(false);
+        return signOut(auth);
+    }
+
+    const value = {
+        user,
+        userData,
+        loading,
+        login,
+        signup,
+        loginWithGoogle,
+        logout,
+        setUserData
     };
 
     return (
-        <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
-            {children}
+        <AuthContext.Provider value={value}>
+            {!loading && children}
         </AuthContext.Provider>
     );
 };
@@ -29,19 +86,14 @@ export const AuthProvider = ({ children }) => {
 export const useAuth = () => useContext(AuthContext);
 
 export const ProtectedRoute = ({ children }) => {
-    const { isAuthenticated } = useAuth();
+    const { user, loading } = useAuth();
     const location = useLocation();
 
-    if (!isAuthenticated) {
-        // Redirect to login but save the attempted location? (Simplification for now: just go home)
-        return <LoginRedirect />;
+    if (loading) return null;
+
+    if (!user) {
+        return <Navigate to="/" state={{ from: location }} replace />;
     }
 
     return children;
 };
-
-// Helper to handle redirection since Navigate needs to be rendered inside Router context
-// But ProtectedRoute is used inside Routes. Ideally we use <Navigate to="/" />
-import { Navigate } from 'react-router-dom';
-
-const LoginRedirect = () => <Navigate to="/" replace />;

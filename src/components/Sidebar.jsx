@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import { ChevronDown, ChevronRight, Zap, CheckCircle2, Lock } from 'lucide-react';
 
 const toolCategories = [
     {
@@ -55,12 +55,17 @@ const toolCategories = [
     }
 ];
 
-export default function Sidebar({ topics, activeId }) {
+export default function Sidebar({ topics, activeId, completedSections = [] }) {
     const scrollToSection = (id) => {
         const el = document.getElementById(id);
         if (el) {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+    };
+
+    const isTopicLocked = (index) => {
+        if (index === 0) return false;
+        return !completedSections.includes(topics[index - 1].id);
     };
 
     return (
@@ -88,30 +93,42 @@ export default function Sidebar({ topics, activeId }) {
                     Topics
                 </div>
                 <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {topics.map(topic => (
-                        <li key={topic.id} style={{ marginBottom: '0.5rem' }}>
-                            <button
-                                onClick={() => scrollToSection(topic.id)}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                    width: '100%',
-                                    padding: '0.5rem 0.75rem',
-                                    fontSize: '0.9rem',
-                                    color: activeId === topic.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                    fontWeight: activeId === topic.id ? 600 : 400,
-                                    borderRadius: '6px',
-                                    background: activeId === topic.id ? 'var(--bg-secondary)' : 'transparent',
-                                    transition: 'all 0.2s ease',
-                                    display: 'block'
-                                }}
-                            >
-                                {topic.title}
-                            </button>
-                        </li>
-                    ))}
+                    {topics.map((topic, index) => {
+                        const locked = isTopicLocked(index);
+                        const done = completedSections.includes(topic.id);
+
+                        return (
+                            <li key={topic.id} style={{ marginBottom: '0.5rem' }}>
+                                <button
+                                    onClick={() => !locked && scrollToSection(topic.id)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: locked ? 'not-allowed' : 'pointer',
+                                        textAlign: 'left',
+                                        width: '100%',
+                                        padding: '0.5rem 0.75rem',
+                                        fontSize: '0.9rem',
+                                        color: activeId === topic.id ? 'var(--text-primary)' : (locked ? 'var(--text-secondary)' : 'var(--text-secondary)'),
+                                        fontWeight: activeId === topic.id ? 600 : 400,
+                                        borderRadius: '6px',
+                                        background: activeId === topic.id ? 'var(--bg-secondary)' : 'transparent',
+                                        transition: 'all 0.2s ease',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        opacity: locked ? 0.5 : 1
+                                    }}
+                                >
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {topic.title}
+                                    </span>
+                                    {done && <CheckCircle2 size={14} color="#10b981" />}
+                                    {locked && <Lock size={14} />}
+                                </button>
+                            </li>
+                        );
+                    })}
                 </ul>
             </div>
 

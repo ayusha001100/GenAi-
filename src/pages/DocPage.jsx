@@ -19,11 +19,29 @@ const QuizComponent = ({ sectionId, onComplete }) => {
     const [showResult, setShowResult] = useState(false);
     const [isCorrect, setIsCorrect] = useState(null);
     const [score, setScore] = useState(0);
+    const [shuffledOptions, setShuffledOptions] = useState([]);
+
+    useEffect(() => {
+        if (questions[currentQuestion]) {
+            const optionsWithOriginalIndex = questions[currentQuestion].options.map((opt, idx) => ({
+                text: opt,
+                isCorrect: idx === questions[currentQuestion].answer
+            }));
+
+            // Fisher-Yates shuffle
+            for (let i = optionsWithOriginalIndex.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [optionsWithOriginalIndex[i], optionsWithOriginalIndex[j]] = [optionsWithOriginalIndex[j], optionsWithOriginalIndex[i]];
+            }
+
+            setShuffledOptions(optionsWithOriginalIndex);
+        }
+    }, [currentQuestion, sectionId]);
 
     if (questions.length === 0) return null;
 
     const handleAnswer = () => {
-        const correct = selectedOption === questions[currentQuestion].answer;
+        const correct = shuffledOptions[selectedOption].isCorrect;
         setIsCorrect(correct);
         if (correct) setScore(s => s + 1);
         setShowResult(true);
@@ -39,8 +57,7 @@ const QuizComponent = ({ sectionId, onComplete }) => {
                 if (finalScore === questions.length) {
                     onComplete();
                 } else {
-                    // Reset quiz if failed
-                    alert(`You got ${finalScore}/${questions.length}. Please re-read and try again!`);
+                    alert(`Score: ${finalScore}/${questions.length}. You need 100% to pass. Let's try again!`);
                     setCurrentQuestion(0);
                     setSelectedOption(null);
                     setShowResult(false);
@@ -60,30 +77,30 @@ const QuizComponent = ({ sectionId, onComplete }) => {
             border: '1px solid var(--border-color)',
             boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
         }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
                 <div style={{
                     padding: '8px 16px',
                     background: 'var(--accent-color)',
                     color: '#fff',
                     borderRadius: '12px',
                     fontSize: '0.8rem',
-                    fontWeight: 600
+                    fontWeight: 700
                 }}>
-                    QUIZ: QUESTION {currentQuestion + 1} / {questions.length}
+                    QUIZ: {currentQuestion + 1} / {questions.length}
                 </div>
             </div>
 
-            <h3 style={{ fontSize: '1.4rem', marginBottom: '2rem', lineHeight: '1.4' }}>
+            <h3 style={{ fontSize: '1.3rem', marginBottom: '2rem', lineHeight: '1.5', fontWeight: 600 }}>
                 {questions[currentQuestion].question}
             </h3>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {questions[currentQuestion].options.map((option, idx) => (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {shuffledOptions.map((option, idx) => (
                     <button
                         key={idx}
                         onClick={() => !showResult && setSelectedOption(idx)}
                         style={{
-                            padding: '1.2rem',
+                            padding: '1.1rem 1.25rem',
                             textAlign: 'left',
                             borderRadius: '14px',
                             border: '1px solid',
@@ -91,18 +108,19 @@ const QuizComponent = ({ sectionId, onComplete }) => {
                             background: selectedOption === idx ? 'rgba(var(--accent-rgb), 0.1)' : 'transparent',
                             color: 'var(--text-primary)',
                             cursor: showResult ? 'default' : 'pointer',
-                            transition: 'all 0.2s ease',
+                            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                             fontSize: '1rem',
-                            position: 'relative',
-                            overflow: 'hidden'
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between'
                         }}
                     >
-                        {option}
-                        {showResult && idx === questions[currentQuestion].answer && (
-                            <CheckCircle2 size={18} style={{ float: 'right', color: '#10b981' }} />
+                        <span>{option.text}</span>
+                        {showResult && option.isCorrect && (
+                            <CheckCircle2 size={18} style={{ color: '#10b981', flexShrink: 0 }} />
                         )}
-                        {showResult && selectedOption === idx && idx !== questions[currentQuestion].answer && (
-                            <span style={{ float: 'right', color: '#ef4444' }}>✕</span>
+                        {showResult && selectedOption === idx && !option.isCorrect && (
+                            <span style={{ color: '#ef4444', fontWeight: 800, flexShrink: 0 }}>✕</span>
                         )}
                     </button>
                 ))}
@@ -114,14 +132,16 @@ const QuizComponent = ({ sectionId, onComplete }) => {
                 style={{
                     marginTop: '2rem',
                     width: '100%',
-                    padding: '1rem',
-                    borderRadius: '12px',
+                    padding: '1.1rem',
+                    borderRadius: '14px',
                     background: selectedOption === null ? 'var(--border-color)' : 'var(--text-primary)',
                     color: 'var(--bg-primary)',
                     border: 'none',
-                    fontWeight: 600,
-                    cursor: selectedOption === null ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s'
+                    fontWeight: 700,
+                    cursor: (selectedOption === null || showResult) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s ease',
+                    transform: selectedOption !== null && !showResult ? 'scale(1)' : 'scale(0.99)',
+                    opacity: selectedOption === null ? 0.6 : 1
                 }}
             >
                 {showResult ? (isCorrect ? 'Correct!' : 'Incorrect') : 'Submit Answer'}
@@ -275,8 +295,8 @@ export default function DocPage({ day }) {
                                 id={section.id}
                                 style={{
                                     marginBottom: '8rem',
-                                    opacity: locked ? 0.4 : 1,
-                                    filter: locked ? 'grayscale(0.8)' : 'none',
+                                    opacity: locked ? 0.7 : 1,
+                                    filter: locked ? 'grayscale(0.5) blur(1px)' : 'none',
                                     pointerEvents: locked ? 'none' : 'auto',
                                     transition: 'all 0.5s ease',
                                     position: 'relative'
@@ -285,17 +305,33 @@ export default function DocPage({ day }) {
                                 {locked && (
                                     <div style={{
                                         position: 'absolute',
-                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        top: 0, left: '-2rem', right: '-2rem', bottom: 0,
                                         zIndex: 10,
                                         display: 'flex',
                                         flexDirection: 'column',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        gap: '1rem',
-                                        background: 'rgba(var(--bg-rgb), 0.5)'
+                                        gap: '1.5rem',
+                                        background: 'rgba(var(--bg-rgb), 0.2)',
+                                        backdropFilter: 'blur(2px)',
+                                        borderRadius: '24px'
                                     }}>
-                                        <Lock size={40} />
-                                        <p style={{ fontWeight: 600 }}>Complete previous section to unlock</p>
+                                        <div style={{
+                                            padding: '1.5rem',
+                                            background: 'var(--bg-secondary)',
+                                            borderRadius: '50%',
+                                            boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                                            border: '1px solid var(--border-color)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Lock size={32} color="var(--accent-color)" />
+                                        </div>
+                                        <div style={{ textAlign: 'center' }}>
+                                            <p style={{ fontWeight: 700, fontSize: '1.1rem', marginBottom: '0.25rem' }}>Module Locked</p>
+                                            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Complete the previous module quiz to unlock</p>
+                                        </div>
                                     </div>
                                 )}
 

@@ -42,8 +42,14 @@ export default function AdminDashboard() {
                     <button onClick={() => navigate('/dashboard')} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}>
                         <ArrowLeft size={24} />
                     </button>
-                    <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
-                    <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }}>LETSUPGRADE GEN AI <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.5rem' }}>/ Admin</span></h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.9', fontWeight: 900, fontSize: '1.25rem', letterSpacing: '-0.04em' }}>
+                            <span>Lets</span>
+                            <span>Upgrade</span>
+                        </div>
+                    </div>
+                    <span style={{ color: 'var(--text-secondary)', fontWeight: 400, marginLeft: '0.75rem', fontSize: '1.2rem' }}>/ Admin</span>
                 </div>
                 <ThemeToggle />
             </header>

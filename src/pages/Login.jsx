@@ -119,7 +119,13 @@ export default function Login() {
                                 border: '1px solid rgba(255,255,255,0.08)'
                             }}
                         >
-                            <img src="/logo-dark.png" alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                <img src="/logo-dark.png" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+                                <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.9', fontWeight: 900, fontSize: '1.5rem', letterSpacing: '-0.04em', textAlign: 'left', color: '#fff' }}>
+                                    <span>Lets</span>
+                                    <span>Upgrade</span>
+                                </div>
+                            </div>
                         </motion.div>
                         <h2 style={{
                             fontSize: '2rem',

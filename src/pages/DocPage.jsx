@@ -275,9 +275,15 @@ export default function DocPage({ day }) {
                     >
                         <ArrowLeft size={20} />
                     </button>
-                    <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '24px', height: '24px', objectFit: 'contain' }} />
-                    <span style={{ fontWeight: 700, letterSpacing: '-0.02em' }}>
-                        LETSUPGRADE GEN AI / {day === 'day1' ? 'Day 1' : 'Day 2'}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '30px', height: '30px', objectFit: 'contain' }} />
+                        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.9', fontWeight: 900, fontSize: '0.95rem', letterSpacing: '-0.03em' }}>
+                            <span>Lets</span>
+                            <span>Upgrade</span>
+                        </div>
+                    </div>
+                    <span style={{ fontWeight: 500, color: 'var(--text-secondary)', marginLeft: '0.5rem', fontSize: '0.9rem' }}>
+                        / {day === 'day1' ? 'Day 1' : 'Day 2'}
                     </span>
                 </div>
                 <ThemeToggle />

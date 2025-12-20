@@ -76,9 +76,12 @@ export default function Dashboard() {
                 position: 'relative',
                 zIndex: 10
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.03em' }}>
-                    <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
-                    LETSUPGRADE GEN AI
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <img src={theme === 'dark' ? '/logo-dark.png' : '/logo.png'} alt="Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '0.9', fontWeight: 900, fontSize: '1.4rem', letterSpacing: '-0.04em' }}>
+                        <span>Lets</span>
+                        <span>Upgrade</span>
+                    </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <ThemeToggle />
